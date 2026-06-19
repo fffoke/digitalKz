@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+env/
+*.egg-info/
+.pytest_cache/
+
+# Окружение / секреты
+.env
+.env.*
+!.env.example
+
+# Аудио для тестов whisper
+*.wav
+*.mp3
+*.ogg
+*.flac
+*.m4a
+
+# Node / Vue
+node_modules/
+dist/
+.vite/
+*.local
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Whisper / модели
+*.pt
+*.bin
+.cache/
