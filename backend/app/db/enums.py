@@ -1,0 +1,75 @@
+"""Перечисления домена ТІЛДЕС."""
+from enum import StrEnum
+
+
+class Role(StrEnum):
+    student = "student"
+    teacher = "teacher"
+    admin = "admin"
+
+
+class LanguageLevel(StrEnum):
+    A1 = "A1"
+    A2 = "A2"
+    B1 = "B1"
+    B2 = "B2"
+    C1 = "C1"
+
+
+class Rank(StrEnum):
+    bastauysh = "Бастауыш"
+    orta = "Орта"
+    jetik = "Жетік"
+    sheber = "Шебер"
+    ustaz = "Ұстаз"
+
+
+class ModerationStatus(StrEnum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+
+
+class Schedule(StrEnum):
+    once_week = "once_week"
+    three_week = "three_week"
+    intensive = "intensive"
+
+
+class LessonStatus(StrEnum):
+    scheduled = "scheduled"
+    open = "open"          # за 6 ч до урока открыт чат/Zoom
+    completed = "completed"
+    cancelled = "cancelled"
+
+
+class HomeworkStatus(StrEnum):
+    assigned = "assigned"
+    submitted = "submitted"
+    graded = "graded"
+
+
+class StageStatus(StrEnum):
+    locked = "locked"
+    current = "current"
+    done = "done"
+
+
+class ExamType(StrEnum):
+    entrance = "entrance"   # вступительный, 25 вопросов
+    level = "level"         # на повышение уровня, 20 вопросов
+
+
+class NotificationType(StrEnum):
+    like = "like"
+    follow = "follow"
+    comment = "comment"
+    mention = "mention"
+    repost = "repost"
+
+
+class ReportReason(StrEnum):
+    spam = "spam"
+    abuse = "abuse"
+    language = "language"   # не казахский язык
+    other = "other"
