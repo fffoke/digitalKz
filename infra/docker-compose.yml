@@ -24,8 +24,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-tildes}
       SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-20160}
-    # создаём таблицы и поднимаем сервер с автоперезагрузкой
-    command: sh -c "python -m app.db.init_db && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app"
+    # применяем миграции и поднимаем сервер с автоперезагрузкой
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app"
     ports:
       - "8000:8000"
     volumes:
