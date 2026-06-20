@@ -38,4 +38,8 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    host: true,          // слушать на всех интерфейсах (доступ с телефона по IP)
+    allowedHosts: true,  // не блокировать запросы по IP/хосту в LAN
+  },
 })

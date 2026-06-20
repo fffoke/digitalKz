@@ -19,6 +19,7 @@ const router = createRouter({
         { path: '/learn', name: 'learn', component: () => import('@/pages/learn/learn.vue'), meta: { authOnly: true } },
         { path: '/activity', name: 'activity', component: () => import('@/pages/activity/activity.vue'), meta: { authOnly: true } },
         { path: '/profile', name: 'profile', component: () => import('@/pages/profile/profile.vue'), meta: { authOnly: true } },
+        { path: '/profile/edit', name: 'profile-edit', component: () => import('@/pages/profile/edit-profile.vue'), meta: { authOnly: true } },
     ]
 });
 

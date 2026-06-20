@@ -6,11 +6,12 @@
 """
 from fastapi import APIRouter
 
-from app.routers.user import auth, onboarding
+from app.routers.user import auth, onboarding, profile
 
 router = APIRouter()
 router.include_router(auth.router)
 router.include_router(onboarding.router)
+router.include_router(profile.router)
 
 
 @router.get("/ping")

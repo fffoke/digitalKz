@@ -7,13 +7,11 @@ from app.routers.user.router import router as user_router
 
 app = FastAPI(title="ТІЛДЕС API")
 
-# Vue dev-серверы (Vite): user-web и admin-web
+# Dev: любой origin (localhost + телефон по локальной сети).
+# Авторизация через Bearer-токен в заголовке, а не куки — для прода сузить список.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:5174",
-    ],
+    allow_origin_regex=".*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
