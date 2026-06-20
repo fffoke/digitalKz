@@ -69,19 +69,8 @@ const loginFunc = async () => {
 
         await userStore.fetchUser()
 
-        const user = userStore.user
-
-        if (user.verification_status === 'pending') {
-            router.push({ name: 'verify-pending' })
-            return
-        }
-
-        if (user.verification_status === 'rejected') {
-            router.push({ name: 'verify' })
-            return
-        }
-
-        router.push({ name: 'home' })
+        // онбординг интересов / список заданий разрулит сама вкладка «AI практика»
+        router.push({ name: 'practice' })
 
     } catch (error) {
 

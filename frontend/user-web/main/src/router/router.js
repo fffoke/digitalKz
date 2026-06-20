@@ -9,16 +9,16 @@ const router = createRouter({
         { path: '/login', name: 'login', component: () => import('@/pages/auth/login.vue'), meta: { guestOnly: true } },
         { path: '/register', name: 'register', component: () => import('@/pages/auth/register.vue'), meta: { guestOnly: true } },
 
-        // онбординг роли
-        { path: '/verify', name: 'verify', component: () => import('@/pages/auth/verify.vue'), meta: { authOnly: true } },
-        { path: '/verify-pending', name: 'verify-pending', component: () => import('@/pages/auth/verify-pending.vue'), meta: { authOnly: true } },
+        // онбординг интересов AI-практики (первый вход)
+        { path: '/onboarding/interests', name: 'onboarding-interests', component: () => import('@/pages/onboarding/interests.vue'), meta: { authOnly: true } },
 
-        // основные вкладки
-        { path: '/home', name: 'home', component: () => import('@/pages/feed/home.vue'), meta: { authOnly: true } },
-        { path: '/messages', name: 'messages', component: () => import('@/pages/messages/messages.vue'), meta: { authOnly: true } },
+        // AI практика (новая идея)
+        { path: '/practice', name: 'practice', component: () => import('@/pages/practice/practice.vue'), meta: { authOnly: true } },
+        { path: '/practice/:taskId', name: 'conversation', component: () => import('@/pages/practice/conversation.vue'), meta: { authOnly: true } },
+
+        // Обучение (старая идея: роли преподаватель/ученик, группы)
         { path: '/learn', name: 'learn', component: () => import('@/pages/learn/learn.vue'), meta: { authOnly: true } },
-        { path: '/duels', name: 'duels', component: () => import('@/pages/duels/duels.vue'), meta: { authOnly: true } },
-        { path: '/duels/:id', name: 'duel', component: () => import('@/pages/duels/duel.vue'), meta: { authOnly: true } },
+
         { path: '/profile', name: 'profile', component: () => import('@/pages/profile/profile.vue'), meta: { authOnly: true } },
         { path: '/profile/edit', name: 'profile-edit', component: () => import('@/pages/profile/edit-profile.vue'), meta: { authOnly: true } },
     ]
@@ -28,7 +28,7 @@ router.beforeEach((to) => {
     const userStore = useUserStore();
 
     if (to.meta.guestOnly && userStore.isAuth) {
-        return { name: 'home' };
+        return { name: 'practice' };
     }
 
     if (to.meta.authOnly && !userStore.isAuth) {

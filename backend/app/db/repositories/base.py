@@ -26,3 +26,7 @@ class BaseRepository(Generic[ModelT]):
         self.db.commit()
         self.db.refresh(obj)
         return obj
+
+    def delete(self, obj: ModelT) -> None:
+        self.db.delete(obj)
+        self.db.commit()

@@ -80,8 +80,8 @@ const regFunc = async () => {
 
     await userStore.fetchUser()
 
-    // роль выбирается позже во вкладке «Обучение» — сразу в приложение
-    router.push({ name: 'home' })
+    // первый вход → онбординг интересов разрулит вкладка «AI практика»
+    router.push({ name: 'practice' })
 
   } catch (error) {
 

@@ -16,6 +16,13 @@ from app.db.models.learning import (
 from app.db.models.messaging import Conversation, ConversationParticipant, Message
 from app.db.models.notification import Notification
 from app.db.models.post import Comment, Like, Post, Report, Repost
+from app.db.models.tutor import (
+    LearningProfile,
+    Result,
+    Session,
+    Task,
+    Turn,
+)
 from app.db.models.user import Follow, TeacherApplication, User, Verification
 
 __all__ = [
@@ -45,4 +52,9 @@ __all__ = [
     "ExamAttempt",
     "Duel",
     "Notification",
+    "LearningProfile",
+    "Task",
+    "Session",
+    "Turn",
+    "Result",
 ]

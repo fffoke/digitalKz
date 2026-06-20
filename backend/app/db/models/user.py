@@ -63,3 +63,5 @@ class TeacherApplication(Base, TimestampMixin):
     status: Mapped[ModerationStatus] = mapped_column(
         Enum(ModerationStatus), default=ModerationStatus.pending
     )
+    # заметка администратора по итогам мини-собеседования
+    admin_note: Mapped[str | None] = mapped_column(Text)

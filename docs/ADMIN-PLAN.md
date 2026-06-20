@@ -1,164 +1,179 @@
-# ТІЛДЕС — Админ-панель: полный план (admin-web + admin-api)
+# ТІЛДЕС — Админ-панель (под AI-собеседника): аналитика и статистика
 
-Отдельное приложение `frontend/admin-web` (Vue, как user-web) + бэкенд в
-`backend/app/routers/admin/*`. Слои те же: **Repository → Service → Router**.
+Продукт развернулся: ядро — **разговорная практика казахского с ИИ**. Значит и
+админка теперь не про модерацию постов, а про **аналитику обучения**: как люди
+занимаются, насколько растут в языке, что мешает, что популярно.
 
-Зона ответственности: фронт-дев 2 (`admin-web`), бэк-дев 2 (`routers/admin`,
-общие `db/` и `services/` — со-владение).
+Отдельное приложение `frontend/admin-web` (Vue, desktop-first, sidebar-layout) +
+бэкенд `backend/app/routers/admin/*`. Слои те же: **Repository → Service → Router**.
 
----
-
-## 1. Доступ и авторизация
-
-- Админ — обычный `User` с `role = admin`. Логин через тот же
-  `POST /api/auth/login`.
-- Нужен гард `require_admin` в `core/deps.py` (по аналогии с `require_teacher`):
-  все ручки `/api/admin/*` защищены им.
-- Первого админа создаём сидом/вручную:
-  `UPDATE users SET role='admin' WHERE email='...';`
-  (позже — CLI-команда `python -m app.scripts.make_admin <email>`).
-- Это отдельный сайт (`admin.tildes.kz`), не PWA, desktop-first, **sidebar**-layout
-  (не нижнее меню).
+> MVP, без переусложнения. Где реальных данных пока мало — отдаём честные нули,
+> а не выдуманные графики. Тяжёлые агрегаты считаем простыми SQL `GROUP BY`.
 
 ---
 
-## 2. Страницы (боковое меню)
+## 1. Доступ
+- Админ — обычный `User` с `role = admin`. Логин через тот же `POST /api/auth/login`.
+- Гард `require_admin` в `core/deps.py` (по аналогии с `require_teacher`); все
+  `/api/admin/*` под ним.
+- Первого админа: `UPDATE users SET role='admin' WHERE email='...';`
 
-| Раздел | Маршрут | Содержимое |
+---
+
+## 2. Разделы (боковое меню)
+
+| Раздел | Маршрут | Суть |
 |---|---|---|
-| 🔐 Вход | `/login` | Логин админа |
-| 📊 Дашборд | `/` | Сводная статистика |
-| 🛡 Модерация | `/moderation` | Жалобы + заявки на роли (подвкладки) |
-| 📝 Посты | `/posts` | Статистика постов |
-| 👨‍🏫 Преподаватели | `/teachers` | Список, поиск, фильтры, карточка |
-| 🎓 Ученики | `/students` | Статистика, график, список, бан |
-| 📚 Материалы | `/materials` | CRUD материалов по уровням |
-| 📋 Экзамены | `/exams` | Конструктор экзаменов + вступительный |
+| 📊 Обзор | `/` | Сводка: пользователи, активность, язык — ключевые KPI |
+| 👥 Пользователи | `/users` | Рост, активность, удержание, список |
+| 🎤 Активность | `/activity` | Сессии, голосовые, минуты речи |
+| 📈 Прогресс языка | `/language` | Распределение уровней, рост, качество речи |
+| 🗂 Задания | `/tasks` | Популярные сценарии, проходимость, сложность |
+| 🧭 Интересы | `/interests` | Что и зачем учат (мотивация/темы/контексты) |
+| ⚙️ Система (LLM/STT) | `/system` | Латентность, ошибки, объёмы вызовов модели |
+
+Идея: **каждый раздел — это набор графиков + таблица**. Везде фильтр по периоду
+(сегодня / 7 дней / 30 дней / всё время).
 
 ---
 
-## 3. Страницы детально + endpoints
+## 3. Разделы детально + метрики + endpoints
 
-### 3.1 📊 Дашборд (`/`)
-Карточки: всего пользователей, учеников, преподавателей — и то же **за сутки**.
-- `GET /api/admin/stats`
-  → `{ users, students, teachers, users_24h, students_24h, teachers_24h }`
+### 3.1 📊 Обзор (`/`)
+Карточки-KPI (число + дельта к прошлому периоду):
+- Всего пользователей, новых за период
+- Активных за период (запускали сессию)
+- Сессий проведено, % завершённых
+- Средний балл выполнения / качества казахского
+- Минут речи записано
 
-### 3.2 🛡 Модерация (`/moderation`) — подвкладки
+И 2 мини-графика: регистрации по дням, сессии по дням.
 
-**Заявки на роли** (то, что уже частично готово)
-- `GET /api/admin/moderation/verifications?status=pending` — заявки учеников
-- `POST /api/admin/moderation/verifications/{id}/approve` ✅ есть
-- `POST /api/admin/moderation/verifications/{id}/reject`
-- `GET /api/admin/moderation/teacher-applications?status=pending`
-- `POST /api/admin/moderation/teacher-applications/{id}/approve` ✅ есть
-- `POST /api/admin/moderation/teacher-applications/{id}/reject`
+- `GET /api/admin/overview?period=7d`
+  → `{ users, users_new, active, sessions, sessions_done, completion_rate,
+       avg_task_score, avg_language_score, speech_minutes,
+       signups_series:[{date,count}], sessions_series:[{date,count}] }`
 
-**Жалобы на пользователей**
-- `GET /api/admin/moderation/users` — список жалоб (причина, дата, автор жалобы)
-- `POST /api/admin/users/{id}/warn` — предупреждение
-- `POST /api/admin/users/{id}/ban` — блокировка
+### 3.2 👥 Пользователи (`/users`)
+- **Рост**: график регистраций по дням.
+- **Удержание (retention)**: воронка
+  `зарегистрировался → прошёл онбординг → 1-я сессия → 1-я завершённая → вернулся (2+ дня)`.
+- **Активность**: DAU/WAU (заходившие/занимавшиеся).
+- Таблица пользователей: имя, уровень, сессий, последняя активность, дата регистрации.
 
-**Жалобы на посты**
-- `GET /api/admin/moderation/posts` — список жалоб (причина, дата)
-- `DELETE /api/admin/posts/{id}` — удалить пост
-- `POST /api/admin/users/{id}/warn` — предупредить автора
+- `GET /api/admin/users/growth?period=30d` → `[{date, count}]`
+- `GET /api/admin/users/funnel?period=30d`
+  → `{ registered, onboarded, first_session, first_finished, returned }`
+- `GET /api/admin/users/activity?period=30d` → `{ dau:[{date,count}], wau }`
+- `GET /api/admin/users?search=&sort=last_active_desc&page=1`
+  → `[{ id, name, level, sessions_count, last_active_at, registered_at }]`
 
-### 3.3 📝 Посты (`/posts`)
-- `GET /api/admin/posts/stats`
-  → `{ total, posts_24h, avg_activity }` *(avg_activity — заглушка с реалистичными данными)*
+### 3.3 🎤 Активность (`/activity`)
+Как именно занимаются:
+- Сессий начато/завершено по дням (две линии).
+- **% завершения** (finished / started) — главный показатель вовлечённости.
+- Голосовых сообщений всего, **среднее на сессию**.
+- **Минуты речи** записано (суммарная длительность голосовых) — по дням.
+- Средняя длина сессии (число реплик) и средняя длительность.
+- Активность по часам суток (когда занимаются) — bar 0–23.
 
-### 3.4 👨‍🏫 Преподаватели (`/teachers`)
-Список + поиск по имени + фильтры (по средней оценке ↑↓, по дате добавления ↑↓).
-- `GET /api/admin/teachers?search=&sort=rating_desc|rating_asc|date_desc|date_asc`
-  → `[{ id, name, avg_rating, joined_at }]`
+- `GET /api/admin/activity/sessions?period=30d`
+  → `{ started:[{date,count}], finished:[{date,count}], completion_rate }`
+- `GET /api/admin/activity/voice?period=30d`
+  → `{ total_messages, avg_per_session, minutes_series:[{date,minutes}] }`
+- `GET /api/admin/activity/by-hour?period=30d` → `[{hour, count}]`
 
-Карточка преподавателя:
-- `GET /api/admin/teachers/{id}`
-  → `{ name, avg_rating, joined_at, reviews: [{ author_name, score, text, date }] }`
-  *(в админке видно, КТО оставил отзыв — даже анонимный)*
+### 3.4 📈 Прогресс языка (`/language`)
+Главная «образовательная» ценность:
+- **Распределение по уровням** A1..C1 (bar) — сколько на каждом. Переключатель
+  количество ↔ процент.
+- **Повышения уровня** за период (сколько человек выросли).
+- **Качество казахского** — средний language_score по дням (растёт ли в среднем).
+- **Средний балл выполнения заданий** по дням.
+- Топ частых ошибок (агрегат из разборов результата) — если успеем парсить.
 
-### 3.5 🎓 Ученики (`/students`)
-Статистика:
-- `GET /api/admin/students/stats`
-  → `{ level_ups_24h, distribution: { A1, A2, B1, B2, C1 }, total }`
-  (фронт сам переключает количество ↔ процент)
+- `GET /api/admin/language/levels` → `{ A1, A2, B1, B2, C1, total }`
+- `GET /api/admin/language/levelups?period=30d` → `[{date, count}]`
+- `GET /api/admin/language/scores?period=30d`
+  → `{ language:[{date,avg}], task:[{date,avg}] }`
+- `GET /api/admin/language/mistakes?period=30d` → `[{ tag, count }]` *(опц.)*
 
-Список:
-- `GET /api/admin/students?search=&level=A1..C1&sort=date_asc|date_desc`
-  → `[{ id, name, level, registered_at, is_banned }]`
-- `POST /api/admin/students/{id}/ban`
+### 3.5 🗂 Задания (`/tasks`)
+Что работает в контенте:
+- **Топ сценариев** по запускам (какие темы выбирают).
+- **Проходимость** каждого типа: started / finished / средний балл.
+- **Распределение по сложности** (easy/medium/hard) и средний балл по сложности.
+- Самые «трудные» задания (низкий средний task_score) — кандидаты на доработку
+  промптов генерации.
 
-### 3.6 📚 Материалы (`/materials`)
-Создание/редактирование материалов по уровням (A1..C1, секция, этап).
-- `GET /api/admin/materials?level=A2`
-- `POST /api/admin/materials` — `{ level, section, stage, title, content }`
-- `PATCH /api/admin/materials/{id}`
-- `DELETE /api/admin/materials/{id}`
+- `GET /api/admin/tasks/top?period=30d&limit=20`
+  → `[{ title, started, finished, avg_score }]`
+- `GET /api/admin/tasks/difficulty` → `[{ difficulty, count, avg_score }]`
+- `GET /api/admin/tasks/hardest?limit=10` → `[{ title, avg_score, attempts }]`
 
-### 3.7 📋 Экзамены (`/exams`)
-Конструктор экзаменов на уровень + вступительный.
-- `GET /api/admin/exams`
-- `POST /api/admin/exams` — `{ target_level, title, questions[], voice_task }`
-- `PATCH /api/admin/exams/{id}`
-- `DELETE /api/admin/exams/{id}`
-- `GET /api/admin/entrance-exam` / `PUT /api/admin/entrance-exam` — вступительный (25 вопросов)
+### 3.6 🧭 Интересы (`/interests`)
+Голос аудитории — для контента и маркетинга:
+- **Зачем учат** (мотивация): работа/переезд/семья/культура/путешествия/учёба — bar.
+- **Темы интересов**: спорт, IT, кулинария… — bar/облако.
+- **Где пригодится** (контексты): работа/базар/семья/госуслуги… — bar.
+- Можно скрестить: например, какой средний прогресс у «работа» vs «семья».
 
-Формат вопроса (JSON):
-`{ "type": "choice|voice|reading", "text": "...", "options": [...], "answer": "..." }`
+- `GET /api/admin/interests/motivation` → `[{ key, count }]`
+- `GET /api/admin/interests/topics` → `[{ topic, count }]`
+- `GET /api/admin/interests/contexts` → `[{ key, count }]`
+
+### 3.7 ⚙️ Система — LLM/STT (`/system`)
+Операционное здоровье (важно, т.к. модель локальная):
+- **Латентность LLM** (среднее/95-й перцентиль время ответа) по дням.
+- **Латентность Whisper** (расшифровка) по дням.
+- Объёмы: вызовов LLM, расшифровок — по дням.
+- **Ошибки**: доля упавших сообщений/оценок (таймауты, сбои модели).
+- (если считаем) сумма обработанных аудио-минут — нагрузка на STT.
+
+- `GET /api/admin/system/latency?period=7d`
+  → `{ llm:[{date,avg,p95}], stt:[{date,avg,p95}] }`
+- `GET /api/admin/system/volume?period=7d`
+  → `{ llm_calls:[{date,count}], transcriptions:[{date,count}], error_rate }`
+
+> Для этого в моделях `Turn`/`Session` полезно сохранять `latency_ms`,
+> `audio_seconds`, флаг ошибки — дёшево добавить и сразу даёт аналитику.
 
 ---
 
 ## 4. Полный список admin-endpoints
 
 ```
-# auth (общий) + гард require_admin на всё ниже
-POST   /api/auth/login
+POST   /api/auth/login                       (общий, дальше всё под require_admin)
 
-# дашборд
-GET    /api/admin/stats
+GET    /api/admin/overview
 
-# модерация — заявки
-GET    /api/admin/moderation/verifications
-POST   /api/admin/moderation/verifications/{id}/approve     ✅
-POST   /api/admin/moderation/verifications/{id}/reject
-GET    /api/admin/moderation/teacher-applications
-POST   /api/admin/moderation/teacher-applications/{id}/approve  ✅
-POST   /api/admin/moderation/teacher-applications/{id}/reject
+GET    /api/admin/users/growth
+GET    /api/admin/users/funnel
+GET    /api/admin/users/activity
+GET    /api/admin/users
 
-# модерация — жалобы
-GET    /api/admin/moderation/users
-GET    /api/admin/moderation/posts
-POST   /api/admin/users/{id}/warn
-POST   /api/admin/users/{id}/ban
-DELETE /api/admin/posts/{id}
+GET    /api/admin/activity/sessions
+GET    /api/admin/activity/voice
+GET    /api/admin/activity/by-hour
 
-# посты
-GET    /api/admin/posts/stats
+GET    /api/admin/language/levels
+GET    /api/admin/language/levelups
+GET    /api/admin/language/scores
+GET    /api/admin/language/mistakes        (опц.)
 
-# преподаватели
-GET    /api/admin/teachers
-GET    /api/admin/teachers/{id}
+GET    /api/admin/tasks/top
+GET    /api/admin/tasks/difficulty
+GET    /api/admin/tasks/hardest
 
-# ученики
-GET    /api/admin/students/stats
-GET    /api/admin/students
-POST   /api/admin/students/{id}/ban
+GET    /api/admin/interests/motivation
+GET    /api/admin/interests/topics
+GET    /api/admin/interests/contexts
 
-# материалы
-GET    /api/admin/materials
-POST   /api/admin/materials
-PATCH  /api/admin/materials/{id}
-DELETE /api/admin/materials/{id}
-
-# экзамены
-GET    /api/admin/exams
-POST   /api/admin/exams
-PATCH  /api/admin/exams/{id}
-DELETE /api/admin/exams/{id}
-GET    /api/admin/entrance-exam
-PUT    /api/admin/entrance-exam
+GET    /api/admin/system/latency
+GET    /api/admin/system/volume
 ```
+
+Общий формат фильтра: `?period=today|7d|30d|all` (бэк превращает в диапазон дат).
 
 ---
 
@@ -167,47 +182,38 @@ PUT    /api/admin/entrance-exam
 ```
 src/
   main.js, App.vue
-  axios/axios.js                 как в user-web (Bearer-токен)
-  router/router.js               маршруты + гард (требует role=admin)
-  stores/
-    admin.js                     токен, текущий админ
-    ui.js                        тема
+  axios/axios.js                 Bearer-токен (как в user-web)
+  router/router.js               гард role=admin
+  stores/{admin,ui}.js
   services/
     auth.js
-    stats.js                     дашборд
-    moderation.js                жалобы + заявки
-    teachers.js
-    students.js
-    materials.js
-    exams.js
+    overview.js  users.js  activity.js  language.js  tasks.js  interests.js  system.js
   components/
     layout/
       AdminLayout.vue            sidebar + topbar + <slot>
-      Sidebar.vue                боковое меню (8 разделов)
+      Sidebar.vue                7 разделов
     common/
-      DataTable.vue              переиспользуемая таблица (поиск/сортировка)
-      StatCard.vue               карточка метрики дашборда
-      Modal.vue
-      SearchInput.vue
+      StatCard.vue               KPI: число + дельта
+      PeriodFilter.vue           today/7d/30d/all
+      DataTable.vue              таблица (поиск/сортировка/пагинация)
+      EmptyState.vue             честный «данных пока нет»
     charts/
-      BarChart.vue               распределение учеников по уровням
-    moderation/
-      ReportRow.vue
-      ApplicationRow.vue
-    exams/
-      QuestionEditor.vue         конструктор вопросов
+      LineChart.vue              ряды по дням (рост, баллы, латентность)
+      BarChart.vue               распределения (уровни, интересы, по часам)
+      FunnelChart.vue            воронка удержания
   pages/
     auth/login.vue
-    dashboard.vue                /
-    moderation.vue               /moderation (подвкладки)
-    posts.vue                    /posts
-    teachers.vue                 /teachers
-    teacher-detail.vue           /teachers/:id
-    students.vue                 /students
-    materials.vue                /materials
-    exams.vue                    /exams
-    exam-edit.vue                /exams/new, /exams/:id
+    overview.vue                 /
+    users.vue                    /users
+    activity.vue                 /activity
+    language.vue                 /language
+    tasks.vue                    /tasks
+    interests.vue                /interests
+    system.vue                   /system
 ```
+
+Графики: лёгкая либа — **Chart.js** (`vue-chartjs`) или **ECharts**. Берём одну,
+3 обёртки (Line/Bar/Funnel) переиспользуем везде.
 
 ---
 
@@ -216,33 +222,43 @@ src/
 ```
 routers/admin/
   router.py                  агрегатор
-  moderation.py              ✅ есть (заявки) + жалобы
-  stats.py                   дашборд + статистика постов/учеников
-  teachers.py
-  students.py
-  materials.py
-  exams.py
+  overview.py
+  users.py
+  activity.py
+  language.py
+  tasks.py
+  interests.py
+  system.py
 db/repositories/
-  report.py, material.py, exam.py, lesson_rating.py   (новые)
+  analytics.py               агрегирующие SQL-запросы (GROUP BY date/level/...)
 services/
-  admin_stats.py             агрегации для дашборда/учеников
-  moderation.py              расширить (жалобы, бан, варн)
-  material.py, exam.py       CRUD-логика
+  analytics.py               считает периоды, дельты, воронку, перцентили
 core/deps.py
-  + require_admin            гард + get_*_service для админских сервисов
+  + require_admin            гард + get_analytics_service
 ```
 
-> Общие модели (`Material`, `Exam`, `Report`, `LessonRating`, `User`) уже есть в
-> `db/models`. Материалы/экзамены, созданные здесь, потребляет user-фронт
-> (`GET /api/materials`, `GET /api/exams/level/{level}`, `GET /api/entrance-exam`).
+> Один `AnalyticsService` поверх `AnalyticsRepository` закрывает почти все ручки —
+> различаются только агрегаты. Не плодим по сервису на эндпоинт.
 
 ---
 
-## 7. Порядок сборки
-1. **Гард + дашборд** — `require_admin`, `GET /api/admin/stats`, `AdminLayout` + Sidebar (каркас).
-2. **Модерация** — заявки (уже частично) + жалобы + бан/варн. Сразу замыкает онбординг ролей.
-3. **Материалы** + **Экзамены** — их тут же начинает потреблять обучение на user-фронте.
-4. **Ученики** (график распределения) и **Преподаватели** (рейтинги/отзывы) — аналитика.
-5. **Посты** — статистика (часть с заглушкой).
+## 7. Что добавить в модели ради аналитики (дёшево)
+- `Session`: `finished_at`, длительность считается из turns.
+- `Turn`: `audio_seconds` (длина голосового), `latency_ms` (время ответа ИИ),
+  `failed` (bool) — для разделов Активность и Система.
+- `Result`: уже есть `task_score`, `language_score` — для Прогресса языка.
+- `User`: `last_active_at` (обновлять при действии) — для DAU/удержания.
+- `LearningProfile`: `motivation`, `interests`, `contexts` — для раздела Интересы.
+
+---
+
+## 8. Порядок сборки
+1. **Гард + Обзор** — `require_admin`, `GET /api/admin/overview`, `AdminLayout`+Sidebar,
+   `StatCard` + `LineChart` (каркас и первые KPI).
+2. **Пользователи** — рост, воронка удержания, таблица. Самая ценная аналитика роста.
+3. **Активность** + **Прогресс языка** — вовлечённость и образовательный эффект (ядро ценности).
+4. **Задания** + **Интересы** — продуктовые инсайты для контента.
+5. **Система (LLM/STT)** — когда добавим `latency_ms`/`audio_seconds` в `Turn`.
 
 Первого админа: `UPDATE users SET role='admin' WHERE email='твой@email';`
+```

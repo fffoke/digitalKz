@@ -1,14 +1,21 @@
-"""Ручки админ-панели (дашборд, модерация, преподаватели, ученики).
+"""Ручки админ-панели (дашборд, модерация).
 
-Зона ответственности: бэк-дев 2.
-Бизнес-логику выносим в app/services/, доступ к БД — в app/db/repositories/.
+Все ручки защищены require_admin (подключается в main.py).
 """
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.core.deps import get_admin_service
 from app.routers.admin import moderation
+from app.schemas.admin import DashboardStats
+from app.services.admin import AdminService
 
 router = APIRouter()
 router.include_router(moderation.router)
+
+
+@router.get("/dashboard", response_model=DashboardStats)
+def dashboard(service: AdminService = Depends(get_admin_service)) -> DashboardStats:
+    return service.dashboard()
 
 
 @router.get("/ping")

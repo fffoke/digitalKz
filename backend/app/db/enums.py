@@ -82,3 +82,27 @@ class ReportReason(StrEnum):
     abuse = "abuse"
     language = "language"   # не казахский язык
     other = "other"
+
+
+# --- AI-собеседник ---
+
+class TaskDifficulty(StrEnum):
+    easy = "easy"
+    medium = "medium"
+    hard = "hard"
+
+
+class TaskStatus(StrEnum):
+    new = "new"
+    in_progress = "in_progress"
+    done = "done"
+
+
+class SessionStatus(StrEnum):
+    active = "active"
+    finished = "finished"
+
+
+class TurnRole(StrEnum):
+    user = "user"   # реплика ученика (голос → расшифровка)
+    ai = "ai"       # ответ собеседника

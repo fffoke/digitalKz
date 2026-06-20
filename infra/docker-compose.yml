@@ -24,6 +24,22 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-tildes}
       SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-20160}
+      # токен HuggingFace для скачивания моделей (whisper/KazLLM)
+      HF_TOKEN: ${HF_TOKEN:-}
+      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
+      # LLM-провайдер (stub | ollama). Для ollama с хоста: http://host.docker.internal:11434
+      LLM_PROVIDER: ${LLM_PROVIDER:-stub}
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:11434}
+      LLM_MODEL: ${LLM_MODEL:-issai/llama-3.1-kazllm-1.0-8b}
+      # модель распознавания речи (для STT_PROVIDER=local): small … large-v3
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
+      WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
+      # STT-провайдер: local (faster-whisper) | openai (gpt-4o-transcribe)
+      STT_PROVIDER: ${STT_PROVIDER:-local}
+      # OpenAI (для LLM_PROVIDER=openai и/или STT_PROVIDER=openai)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      OPENAI_STT_MODEL: ${OPENAI_STT_MODEL:-gpt-4o-transcribe}
     # применяем миграции и поднимаем сервер с автоперезагрузкой
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app"
     ports:
@@ -49,18 +65,19 @@ services:
     depends_on:
       - backend
 
-  # admin-web появится, когда наполнят frontend/admin-web — раскомментировать:
-  # admin-web:
-  #   build:
-  #     context: ../frontend/admin-web
-  #   command: npm run dev -- --host 0.0.0.0
-  #   ports:
-  #     - "5174:5173"
-  #   volumes:
-  #     - ../frontend/admin-web:/app
-  #     - /app/node_modules
-  #   depends_on:
-  #     - backend
+  admin-web:
+    build:
+      context: ../frontend/admin-web
+    command: npm run dev -- --host 0.0.0.0
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "5174:5173"
+    volumes:
+      - ../frontend/admin-web:/app
+      - /app/node_modules
+    depends_on:
+      - backend
 
 volumes:
   pgdata:
