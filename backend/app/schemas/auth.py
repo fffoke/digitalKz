@@ -12,6 +12,11 @@ class RegisterIn(BaseModel):
     # Ученик/преподаватель выбирается позже во вкладке «Обучение».
 
 
+class LoginIn(BaseModel):
+    email: EmailStr
+    password: str
+
+
 class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"

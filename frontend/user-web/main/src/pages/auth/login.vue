@@ -1,4 +1,3 @@
-```vue
 <script setup>
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -153,4 +152,3 @@ const loginFunc = async () => {
     </p>
   </AuthLayout>
 </template>
-```
