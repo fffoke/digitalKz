@@ -5,7 +5,10 @@
 """
 from fastapi import APIRouter
 
+from app.routers.admin import moderation
+
 router = APIRouter()
+router.include_router(moderation.router)
 
 
 @router.get("/ping")

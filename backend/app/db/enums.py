@@ -3,8 +3,9 @@ from enum import StrEnum
 
 
 class Role(StrEnum):
-    student = "student"
-    teacher = "teacher"
+    user = "user"          # базовая роль сразу после регистрации
+    student = "student"    # после верификации личности
+    teacher = "teacher"    # после одобрения анкеты + созвона
     admin = "admin"
 
 
@@ -66,6 +67,8 @@ class NotificationType(StrEnum):
     comment = "comment"
     mention = "mention"
     repost = "repost"
+    role_granted = "role_granted"        # одобрили роль ученика/преподавателя
+    role_rejected = "role_rejected"      # заявку отклонили
 
 
 class ReportReason(StrEnum):

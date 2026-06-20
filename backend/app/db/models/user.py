@@ -16,7 +16,7 @@ class User(Base, TimestampMixin):
     username: Mapped[str | None] = mapped_column(String(60), unique=True, index=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
-    role: Mapped[Role] = mapped_column(Enum(Role), default=Role.student)
+    role: Mapped[Role] = mapped_column(Enum(Role), default=Role.user)
 
     avatar: Mapped[str | None] = mapped_column(String(500))
     bio: Mapped[str | None] = mapped_column(Text)

@@ -8,7 +8,8 @@ class RegisterIn(BaseModel):
     name: str
     email: EmailStr
     password: str
-    role: Role = Role.student
+    # роль НЕ выбирается при регистрации — все начинают как Role.user.
+    # Ученик/преподаватель выбирается позже во вкладке «Обучение».
 
 
 class TokenOut(BaseModel):

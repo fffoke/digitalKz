@@ -21,7 +21,7 @@ def register(data: RegisterIn, db: Session = Depends(get_db)) -> User:
         name=data.name,
         email=data.email,
         password_hash=hash_password(data.password),
-        role=data.role,
+        # role не задаётся — БД проставит Role.user по умолчанию
     )
     db.add(user)
     db.commit()

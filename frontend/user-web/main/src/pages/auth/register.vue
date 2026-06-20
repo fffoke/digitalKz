@@ -1,11 +1,9 @@
-```vue id="d5vg2d"
 <script setup>
 import { reactive } from 'vue'
 
 import AuthLayout from '@/components/AuthLayout.vue'
 import AuthInput from '@/components/AuthInput.vue'
 import AuthButton from '@/components/AuthButton.vue'
-import RoleSwitcher from '@/components/RoleSwitcher.vue'
 
 import { register } from '@/services/auth'
 import { useUserStore } from '@/stores/user'
@@ -18,8 +16,7 @@ const userStore = useUserStore()
 const form = reactive({
   name: '',
   email: '',
-  password: '',
-  role: 'student'
+  password: ''
 })
 
 const errors = reactive({
@@ -83,7 +80,8 @@ const regFunc = async () => {
 
     await userStore.fetchUser()
 
-    router.push({ name: 'verify' })
+    // роль выбирается позже во вкладке «Обучение» — сразу в приложение
+    router.push({ name: 'home' })
 
   } catch (error) {
 
@@ -102,10 +100,8 @@ const regFunc = async () => {
 <template>
   <AuthLayout
     title="Создать аккаунт"
-    subtitle="Выберите свою роль на платформе"
+    subtitle="Бесплатное изучение казахского языка"
   >
-    <RoleSwitcher v-model="form.role" />
-
     <form
       class="space-y-8"
       @submit.prevent="regFunc"
@@ -142,7 +138,7 @@ const regFunc = async () => {
       <AuthButton
         :disabled="loading.value"
       >
-        {{ loading.value ? 'Создание...' : 'Стать учеником' }}
+        {{ loading.value ? 'Создание...' : 'Создать аккаунт' }}
       </AuthButton>
     </form>
 
@@ -162,4 +158,3 @@ const regFunc = async () => {
     </p>
   </AuthLayout>
 </template>
-```
