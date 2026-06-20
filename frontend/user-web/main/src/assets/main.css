@@ -1,1 +1,4 @@
 @import 'tailwindcss';
+
+/* тёмная тема по классу .dark на <html> (Tailwind v4) */
+@custom-variant dark (&:where(.dark, .dark *));
