@@ -1,19 +1,10 @@
-"""Выбор роли во вкладке «Обучение»: верификация ученика, заявка преподавателя.
+"""Эндпоинты онбординга — тонкий слой над OnboardingService."""
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 
-Ключевая идея: заявка НЕ блокирует пользователя. Он остаётся Role.user и спокойно
-пользуется приложением (лента, профиль, директ). Когда модератор одобрит — роль
-сменится и прилетит уведомление (type=role_granted) → фронт покажет «пуш».
-"""
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
-from app.core.deps import get_current_user
-from app.db.enums import ModerationStatus, Role
-from app.db.models.notification import Notification
-from app.db.models.user import TeacherApplication, User, Verification
-from app.db.session import get_db
+from app.core.deps import get_current_user, get_onboarding_service
+from app.db.models.user import User
 from app.schemas.onboarding import NotificationOut, RoleStatusOut, TeacherApplyIn
+from app.services.onboarding import OnboardingService
 
 router = APIRouter(tags=["onboarding"])
 
@@ -21,23 +12,9 @@ router = APIRouter(tags=["onboarding"])
 @router.get("/me/role-status", response_model=RoleStatusOut)
 def role_status(
     current: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    service: OnboardingService = Depends(get_onboarding_service),
 ) -> RoleStatusOut:
-    ver = db.scalar(
-        select(Verification)
-        .where(Verification.user_id == current.id)
-        .order_by(Verification.id.desc())
-    )
-    app_ = db.scalar(
-        select(TeacherApplication)
-        .where(TeacherApplication.user_id == current.id)
-        .order_by(TeacherApplication.id.desc())
-    )
-    return RoleStatusOut(
-        role=current.role,
-        verification_status=ver.status if ver else None,
-        teacher_application_status=app_.status if app_ else None,
-    )
+    return service.role_status(current)
 
 
 @router.post("/verification", status_code=status.HTTP_201_CREATED)
@@ -45,53 +22,27 @@ def submit_verification(
     iin: str = Form(...),
     doc_photo: UploadFile | None = File(None),
     current: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    service: OnboardingService = Depends(get_onboarding_service),
 ) -> dict:
-    """Заявка стать учеником: ИИН + удостоверение → на модерацию."""
-    if current.role != Role.user:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Роль уже назначена")
-    ver = Verification(
-        user_id=current.id,
-        iin=iin,
-        doc_url=doc_photo.filename if doc_photo else None,
-        status=ModerationStatus.pending,
+    ver = service.submit_verification(
+        current, iin, doc_photo.filename if doc_photo else None
     )
-    db.add(ver)
-    db.commit()
-    return {"status": "pending"}
+    return {"status": ver.status}
 
 
 @router.post("/teacher/apply", status_code=status.HTTP_201_CREATED)
 def teacher_apply(
     data: TeacherApplyIn,
     current: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    service: OnboardingService = Depends(get_onboarding_service),
 ) -> dict:
-    """Заявка стать преподавателем: анкета-резюме → модерация + созвон."""
-    if current.role != Role.user:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Роль уже назначена")
-    application = TeacherApplication(
-        user_id=current.id,
-        education=data.education,
-        experience=data.experience,
-        kazakh_level=data.kazakh_level,
-        status=ModerationStatus.pending,
-    )
-    db.add(application)
-    db.commit()
-    return {"status": "pending"}
+    application = service.apply_teacher(current, data)
+    return {"status": application.status}
 
 
 @router.get("/notifications", response_model=list[NotificationOut])
 def list_notifications(
     current: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> list[Notification]:
-    """Уведомления пользователя (включая role_granted — «пуш» о новой роли)."""
-    return list(
-        db.scalars(
-            select(Notification)
-            .where(Notification.user_id == current.id)
-            .order_by(Notification.id.desc())
-        )
-    )
+    service: OnboardingService = Depends(get_onboarding_service),
+) -> list:
+    return service.list_notifications(current)

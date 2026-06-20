@@ -10,12 +10,17 @@ from app.db.enums import Role
 from app.db.models.user import User
 from app.db.session import get_db
 from app.services.auth import AuthService
+from app.services.onboarding import OnboardingService
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
     return AuthService(db)
+
+
+def get_onboarding_service(db: Session = Depends(get_db)) -> OnboardingService:
+    return OnboardingService(db)
 
 
 def get_current_user(
