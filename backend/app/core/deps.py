@@ -1,32 +1,29 @@
-"""Зависимости FastAPI: текущий пользователь, проверка ролей.
+"""Зависимости FastAPI: сборка сервисов, текущий пользователь, проверка ролей.
 
-Авторизация — простой Bearer-токен в заголовке Authorization, без OAuth2.
+Здесь связываем слои: get_db → Service(db) → роутер получает готовый сервис.
 """
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from app.core.security import decode_token
 from app.db.enums import Role
 from app.db.models.user import User
 from app.db.session import get_db
+from app.services.auth import AuthService
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
+def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
+    return AuthService(db)
+
+
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
-    db: Session = Depends(get_db),
+    service: AuthService = Depends(get_auth_service),
 ) -> User:
-    if credentials is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Не авторизован")
-    user_id = decode_token(credentials.credentials)
-    if user_id is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Недействительный токен")
-    user = db.get(User, user_id)
-    if user is None or user.is_banned:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Пользователь недоступен")
-    return user
+    token = credentials.credentials if credentials else None
+    return service.authenticate(token)
 
 
 def require_teacher(current: User = Depends(get_current_user)) -> User:
