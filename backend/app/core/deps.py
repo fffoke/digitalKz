@@ -10,6 +10,7 @@ from app.db.enums import Role
 from app.db.models.user import User
 from app.db.session import get_db
 from app.services.auth import AuthService
+from app.services.duel import DuelService
 from app.services.onboarding import OnboardingService
 from app.services.profile import ProfileService
 
@@ -26,6 +27,10 @@ def get_onboarding_service(db: Session = Depends(get_db)) -> OnboardingService:
 
 def get_profile_service(db: Session = Depends(get_db)) -> ProfileService:
     return ProfileService(db)
+
+
+def get_duel_service(db: Session = Depends(get_db)) -> DuelService:
+    return DuelService(db)
 
 
 def get_current_user(

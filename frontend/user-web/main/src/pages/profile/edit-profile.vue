@@ -4,8 +4,9 @@ import { useRouter } from 'vue-router'
 
 import AppLayout from '@/components/layout/AppLayout.vue'
 import AuthInput from '@/components/AuthInput.vue'
+import Avatar from '@/components/common/Avatar.vue'
 import { useUserStore } from '@/stores/user'
-import { getMyProfile, updateProfile } from '@/services/users'
+import { getMyProfile, updateProfile, uploadAvatar } from '@/services/users'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -13,6 +14,8 @@ const userStore = useUserStore()
 const form = reactive({ name: '', username: '', bio: '', avatar: '' })
 const error = ref('')
 const loading = ref(false)
+const uploading = ref(false)
+const fileInput = ref(null)
 
 onMounted(async () => {
   const p = (await getMyProfile()).data
@@ -21,6 +24,22 @@ onMounted(async () => {
   form.bio = p.bio || ''
   form.avatar = p.avatar || ''
 })
+
+const onAvatarPick = async (e) => {
+  const file = e.target.files?.[0]
+  if (!file) return
+  uploading.value = true
+  error.value = ''
+  try {
+    const p = (await uploadAvatar(file)).data
+    form.avatar = p.avatar
+    await userStore.fetchUser()
+  } catch (err) {
+    error.value = 'Не удалось загрузить фото'
+  } finally {
+    uploading.value = false
+  }
+}
 
 const save = async () => {
   error.value = ''
@@ -51,6 +70,19 @@ const save = async () => {
         </button>
       </div>
 
+      <!-- аватар -->
+      <div class="flex flex-col items-center gap-3">
+        <Avatar :name="form.name" :src="form.avatar" size="h-24 w-24" />
+        <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="onAvatarPick" />
+        <button
+          class="text-sm font-medium text-red-500 disabled:opacity-50"
+          :disabled="uploading"
+          @click="fileInput.click()"
+        >
+          {{ uploading ? 'Загрузка…' : 'Загрузить фото' }}
+        </button>
+      </div>
+
       <AuthInput v-model="form.name" label="Имя" placeholder="Адильжан" />
       <AuthInput v-model="form.username" label="Имя пользователя" placeholder="adilzhan" />
 
@@ -67,8 +99,6 @@ const save = async () => {
                  placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-200"
         />
       </div>
-
-      <AuthInput v-model="form.avatar" label="Ссылка на аватар" placeholder="https://…" />
 
       <p v-if="error" class="text-red-500 text-sm text-center">{{ error }}</p>
 

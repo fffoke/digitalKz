@@ -61,6 +61,12 @@ class ExamType(StrEnum):
     level = "level"         # на повышение уровня, 20 вопросов
 
 
+class DuelStatus(StrEnum):
+    waiting = "waiting"     # ждёт соперника в очереди
+    active = "active"       # соперник найден, оба отвечают
+    finished = "finished"   # судья вынес вердикт
+
+
 class NotificationType(StrEnum):
     like = "like"
     follow = "follow"

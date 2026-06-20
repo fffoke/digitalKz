@@ -22,6 +22,7 @@ class ProfileService:
             level=user.level,
             rank=user.rank,
             is_verified=user.is_verified,
+            duel_rating=user.duel_rating,
             followers=self.users.followers_count(user.id),
             following=self.users.following_count(user.id),
             posts_count=self.users.posts_count(user.id),

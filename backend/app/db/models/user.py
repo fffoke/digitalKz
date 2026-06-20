@@ -1,7 +1,7 @@
 """Пользователи, верификация, подписки, заявки преподавателей."""
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Enum, ForeignKey, String, Text
+from sqlalchemy import Boolean, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin
@@ -26,6 +26,9 @@ class User(Base, TimestampMixin):
 
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     is_banned: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # рейтинг для матчмейкинга дуэлей
+    duel_rating: Mapped[int] = mapped_column(Integer, default=1000)
 
 
 class Verification(Base, TimestampMixin):

@@ -50,8 +50,14 @@ class OnboardingService:
             kazakh_level=data.kazakh_level,
         )
 
-    def list_notifications(self, user: User) -> list[Notification]:
-        return self.notifications.list_for_user(user.id)
+    def list_notifications(
+        self, user: User, filter: str = "all"
+    ) -> list[Notification]:
+        types = {
+            "follows": [NotificationType.follow],
+            "mentions": [NotificationType.mention],
+        }.get(filter)
+        return self.notifications.list_for_user(user.id, types)
 
     # --- модерация (админка) ---
 

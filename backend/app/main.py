@@ -1,11 +1,18 @@
 """Точка входа FastAPI — подключает роутеры пользователя и админки."""
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.routers.admin.router import router as admin_router
 from app.routers.user.router import router as user_router
 
 app = FastAPI(title="ТІЛДЕС API")
+
+# раздача загруженных файлов (аватары и т.п.)
+os.makedirs("uploads", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Dev: любой origin (localhost + телефон по локальной сети).
 # Авторизация через Bearer-токен в заголовке, а не куки — для прода сузить список.

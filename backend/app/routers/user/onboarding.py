@@ -42,7 +42,8 @@ def teacher_apply(
 
 @router.get("/notifications", response_model=list[NotificationOut])
 def list_notifications(
+    filter: str = "all",  # all | follows | mentions
     current: User = Depends(get_current_user),
     service: OnboardingService = Depends(get_onboarding_service),
 ) -> list:
-    return service.list_notifications(current)
+    return service.list_notifications(current, filter)

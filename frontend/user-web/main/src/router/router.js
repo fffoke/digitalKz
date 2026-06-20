@@ -17,7 +17,8 @@ const router = createRouter({
         { path: '/home', name: 'home', component: () => import('@/pages/feed/home.vue'), meta: { authOnly: true } },
         { path: '/messages', name: 'messages', component: () => import('@/pages/messages/messages.vue'), meta: { authOnly: true } },
         { path: '/learn', name: 'learn', component: () => import('@/pages/learn/learn.vue'), meta: { authOnly: true } },
-        { path: '/activity', name: 'activity', component: () => import('@/pages/activity/activity.vue'), meta: { authOnly: true } },
+        { path: '/duels', name: 'duels', component: () => import('@/pages/duels/duels.vue'), meta: { authOnly: true } },
+        { path: '/duels/:id', name: 'duel', component: () => import('@/pages/duels/duel.vue'), meta: { authOnly: true } },
         { path: '/profile', name: 'profile', component: () => import('@/pages/profile/profile.vue'), meta: { authOnly: true } },
         { path: '/profile/edit', name: 'profile-edit', component: () => import('@/pages/profile/edit-profile.vue'), meta: { authOnly: true } },
     ]

@@ -38,3 +38,10 @@ class UserRepository(BaseRepository[User]):
         return self.db.scalar(
             select(func.count()).select_from(Post).where(Post.author_id == user_id)
         ) or 0
+
+    def top_by_duel_rating(self, limit: int = 20) -> list[User]:
+        return list(
+            self.db.scalars(
+                select(User).order_by(User.duel_rating.desc()).limit(limit)
+            )
+        )

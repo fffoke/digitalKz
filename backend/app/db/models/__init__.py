@@ -2,6 +2,7 @@
 (нужно для Alembic autogenerate и create_all)."""
 from app.db.base import Base
 from app.db.models.content import Exam, ExamAttempt, Material
+from app.db.models.duel import Duel
 from app.db.models.learning import (
     Group,
     GroupMember,
@@ -42,5 +43,6 @@ __all__ = [
     "Material",
     "Exam",
     "ExamAttempt",
+    "Duel",
     "Notification",
 ]

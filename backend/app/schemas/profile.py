@@ -14,6 +14,7 @@ class ProfileOut(BaseModel):
     level: LanguageLevel | None = None
     rank: Rank | None = None
     is_verified: bool
+    duel_rating: int = 1000
     followers: int = 0
     following: int = 0
     posts_count: int = 0
