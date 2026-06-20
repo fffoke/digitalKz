@@ -1,0 +1,67 @@
+name: tildes
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-tildes}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-tildes}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ../backend
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-tildes}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
+    # создаём таблицы и поднимаем сервер с автоперезагрузкой
+    command: sh -c "python -m app.db.init_db && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../backend:/app          # код для hot-reload
+      - hf_cache:/root/.cache    # кэш скачанных моделей whisper между перезапусками
+    depends_on:
+      db:
+        condition: service_healthy
+
+  user-web:
+    build:
+      context: ../frontend/user-web/main
+    command: npm run dev -- --host 0.0.0.0
+    environment:
+      CHOKIDAR_USEPOLLING: "true"   # надёжный watch внутри Docker на macOS
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../frontend/user-web/main:/app   # код для hot-reload
+      - /app/node_modules                # сохраняем node_modules из образа
+    depends_on:
+      - backend
+
+  # admin-web появится, когда наполнят frontend/admin-web — раскомментировать:
+  # admin-web:
+  #   build:
+  #     context: ../frontend/admin-web
+  #   command: npm run dev -- --host 0.0.0.0
+  #   ports:
+  #     - "5174:5173"
+  #   volumes:
+  #     - ../frontend/admin-web:/app
+  #     - /app/node_modules
+  #   depends_on:
+  #     - backend
+
+volumes:
+  pgdata:
+  hf_cache:

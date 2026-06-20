@@ -1,0 +1,13 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+# тестовое аудио / выхлоп whisper
+*.wav
+*.mp3
+*.ogg
+*.flac
+*.m4a
+audio.*
