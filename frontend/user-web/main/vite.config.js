@@ -23,8 +23,8 @@ export default defineConfig({
         display: 'standalone',
         background_color: 'white',
         icons: [
-          { src: '/pwa-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/pwa-512.png', sizes: '512x512', type: 'image/png' }
+          { src: '/Logo.png', sizes: '192x192', type: 'image/png' },
+          { src: '/Logo.png', sizes: '512x512', type: 'image/png' }
         ]
       },
 

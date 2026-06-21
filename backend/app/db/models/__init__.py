@@ -6,6 +6,7 @@ from app.db.models.duel import Duel
 from app.db.models.learning import (
     Group,
     GroupMember,
+    GroupMessage,
     GroupStageProgress,
     Homework,
     Lesson,
@@ -41,6 +42,7 @@ __all__ = [
     "Message",
     "Group",
     "GroupMember",
+    "GroupMessage",  # чат группы
     "Section",
     "Stage",
     "GroupStageProgress",

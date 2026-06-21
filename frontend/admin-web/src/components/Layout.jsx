@@ -3,7 +3,8 @@ import { NavLink } from 'react-router-dom'
 const nav = [
   { to: '/', label: 'Дашборд', end: true },
   { to: '/moderation', label: 'Модерация' },
-  { to: '/materials', label: 'Материалы' }
+  { to: '/materials', label: 'Материалы' },
+  { to: '/exams', label: 'Экзамены' },
 ]
 
 export default function Layout({ user, onLogout, children }) {

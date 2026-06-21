@@ -1,7 +1,7 @@
-"""Схемы админ-панели: модерация заявок, дашборд."""
+"""Схемы админ-панели: модерация заявок, дашборд, экзамены."""
 from pydantic import BaseModel
 
-from app.db.enums import LanguageLevel
+from app.db.enums import ExamType, LanguageLevel
 
 
 class VerificationItem(BaseModel):
@@ -43,4 +43,61 @@ class DashboardStats(BaseModel):
     tasks_done: int
 
 
-# class CreateMaterial
+# --- экзамены ---
+
+class ExamQuestion(BaseModel):
+    """Вопрос экзамена. type: choice (варианты) | listening (аудио→текст) | reading."""
+    type: str = "choice"
+    text: str
+    options: list[str] = []
+    answer: str | None = None
+    audio_url: str | None = None   # для listening: что слушает ученик
+
+
+class ExamOut(BaseModel):
+    id: int
+    title: str
+    type: ExamType
+    target_level: LanguageLevel | None = None
+    questions: list[ExamQuestion] = []
+    voice_task: str | None = None
+
+
+class ExamListItem(BaseModel):
+    id: int
+    title: str
+    type: ExamType
+    target_level: LanguageLevel | None = None
+    questions_count: int
+
+
+class ExamUpdateIn(BaseModel):
+    title: str | None = None
+    questions: list[ExamQuestion] = []
+    voice_task: str | None = None
+
+
+class ExamCreateIn(BaseModel):
+    title: str
+    target_level: LanguageLevel | None = None
+    questions: list[ExamQuestion] = []
+    voice_task: str | None = None
+
+
+# --- материалы ---
+
+class MaterialIn(BaseModel):
+    level: LanguageLevel
+    section: int | None = None
+    stage: int | None = None
+    title: str
+    content: str
+
+
+class MaterialItem(BaseModel):
+    id: int
+    level: LanguageLevel
+    section: int | None = None
+    stage: int | None = None
+    title: str
+    content: str

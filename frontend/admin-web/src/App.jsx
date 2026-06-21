@@ -6,6 +6,7 @@ import Layout from './components/Layout.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Moderation from './pages/Moderation.jsx'
 import Materials from "./pages/Material.jsx";
+import Exams from './pages/Exams.jsx'
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/moderation" element={<Moderation />} />
         <Route path="/materials" element={<Materials />} />
+        <Route path="/exams" element={<Exams />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

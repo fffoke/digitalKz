@@ -5,12 +5,14 @@
 from fastapi import APIRouter, Depends
 
 from app.core.deps import get_admin_service
-from app.routers.admin import moderation
+from app.routers.admin import exams, materials, moderation
 from app.schemas.admin import DashboardStats
 from app.services.admin import AdminService
 
 router = APIRouter()
 router.include_router(moderation.router)
+router.include_router(exams.router)
+router.include_router(materials.router)
 
 
 @router.get("/dashboard", response_model=DashboardStats)

@@ -38,6 +38,16 @@ class GroupMember(Base, TimestampMixin):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
 
 
+class GroupMessage(Base, TimestampMixin):
+    """Сообщение в чате группы (общий чат учеников и преподавателя)."""
+    __tablename__ = "group_messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    group_id: Mapped[int] = mapped_column(ForeignKey("groups.id"), index=True)
+    sender_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    text: Mapped[str] = mapped_column(Text)
+
+
 class Section(Base):
     """Секция плана обучения (общая для уровня)."""
     __tablename__ = "sections"
@@ -101,6 +111,7 @@ class Homework(Base, TimestampMixin):
     student_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     task: Mapped[str] = mapped_column(Text)
     submission: Mapped[str | None] = mapped_column(Text)
+    submission_file: Mapped[str | None] = mapped_column(String(500))  # фото тетради и т.п.
     status: Mapped[HomeworkStatus] = mapped_column(
         Enum(HomeworkStatus), default=HomeworkStatus.assigned
     )

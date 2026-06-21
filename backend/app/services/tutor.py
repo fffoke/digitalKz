@@ -145,6 +145,13 @@ class TutorService:
             self.sessions.delete(s)
         self.tasks.delete(task)
 
+    def delete_completed(self, user: User) -> int:
+        """Удалить все пройденные задания (чистка списка)."""
+        done = [t.id for t in self.tasks.list_for_user(user.id) if t.status == TaskStatus.done]
+        for task_id in done:
+            self.delete_task(user, task_id)
+        return len(done)
+
     # --- сессия диалога ---
 
     def start_task(self, user: User, task_id: int) -> tuple[Session, str]:

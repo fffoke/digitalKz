@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     # токен HuggingFace — для скачивания моделей (whisper, KazLLM)
     HF_TOKEN: str = ""
 
+    # видеозвонки: базовый Jitsi-инстанс (можно сменить, если meet.jit.si недоступен)
+    JITSI_BASE_URL: str = "https://meet.jit.si"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

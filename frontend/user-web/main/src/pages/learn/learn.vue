@@ -1,21 +1,28 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import AppLayout from '@/components/layout/AppLayout.vue'
+import GroupChat from '@/components/learning/GroupChat.vue'
 import { getRoleStatus, submitVerification, applyTeacher } from '@/services/onboarding'
 import {
   completeLesson,
   createGroup,
+  getEntranceExam,
   getLearningOverview,
+  leaveGroup,
   gradeHomework,
   joinGroup,
   joinGroupByCode,
   rateLesson,
   scheduleLesson,
+  startLesson,
   submitEntranceTest,
   submitHomework,
   submitLevelExam,
 } from '@/services/learning'
+
+const router = useRouter()
 
 const loading = ref(true)
 const submitting = ref(false)
@@ -26,12 +33,15 @@ const overview = ref(null)
 
 const iin = ref('')
 const teacherForm = ref({ education: '', experience: '', kazakh_level: 'B2' })
+const groupTab = ref('chat')
 const testAnswers = ref({})
+const examQuestions = ref([])
 const listeningAnswers = ref({ l1: '', l2: '', l3: '' })
 const readingText = ref('')
 const groupForm = ref({ name: '', schedule: 'three_week' })
 const inviteCode = ref('')
 const lessonStarts = ref('')
+const planDrafts = ref({})   // group_id -> datetime для планирования урока
 const homeworkDrafts = ref({})
 const gradeDrafts = ref({})
 const ratingDrafts = ref({})
@@ -69,6 +79,9 @@ const load = async () => {
     status.value = (await getRoleStatus()).data
     if (status.value.role === 'student' || status.value.role === 'teacher') {
       overview.value = (await getLearningOverview()).data
+      if (overview.value?.needs_entrance_test) {
+        examQuestions.value = (await getEntranceExam()).data.questions || []
+      }
     }
   } catch (e) {
     console.log(e.response)
@@ -182,6 +195,54 @@ const join = async (group) => {
   }
 }
 
+const leaveCurrentGroup = async () => {
+  if (!currentGroup.value) return
+  if (!confirm('Покинуть группу? Доступ к чату пропадёт.')) return
+  submitting.value = true
+  error.value = ''
+  try {
+    await leaveGroup(currentGroup.value.id)
+    groupTab.value = 'chat'
+    await load()
+  } catch (e) {
+    error.value = e.response?.data?.detail || 'Не удалось покинуть группу'
+  } finally {
+    submitting.value = false
+  }
+}
+
+const goExam = () => router.push({ name: 'level-exam' })
+
+const goChat = () => router.push({ name: 'group-chat', params: { groupId: currentGroup.value.id } })
+const goChatFor = (groupId) => router.push({ name: 'group-chat', params: { groupId } })
+const goHomework = () => router.push({ name: 'homework' })
+
+const lessonTime = (lesson) => {
+  const opts = { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }
+  const start = new Date(lesson.starts_at).toLocaleString('ru', opts)
+  if (!lesson.ends_at) return start
+  const end = new Date(lesson.ends_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })
+  return `${start} – ${end}`
+}
+
+const joinLesson = (lesson) => {
+  if (lesson.meet_link) window.open(lesson.meet_link, '_blank')
+}
+
+const startGroupLesson = async (group) => {
+  submitting.value = true
+  error.value = ''
+  try {
+    const { data } = await startLesson(group.id)
+    if (data.meet_link) window.open(data.meet_link, '_blank')
+    await load()
+  } catch (e) {
+    error.value = e.response?.data?.detail || 'Не удалось начать урок'
+  } finally {
+    submitting.value = false
+  }
+}
+
 const joinByInvite = async () => {
   if (!inviteCode.value.trim()) return
   submitting.value = true
@@ -198,18 +259,19 @@ const joinByInvite = async () => {
 }
 
 const planLesson = async (group) => {
-  if (!lessonStarts.value) {
-    error.value = 'Выберите дату и время урока'
+  const when = planDrafts.value[group.id]
+  if (!when) {
+    alert('Сначала выберите дату и время урока для этой группы')
     return
   }
   submitting.value = true
   error.value = ''
   try {
-    await scheduleLesson(group.id, new Date(lessonStarts.value).toISOString())
-    lessonStarts.value = ''
+    await scheduleLesson(group.id, new Date(when).toISOString())
+    planDrafts.value[group.id] = ''
     await load()
   } catch (e) {
-    error.value = e.response?.data?.detail || 'Не удалось запланировать урок'
+    alert(e.response?.data?.detail || 'Не удалось запланировать урок')
   } finally {
     submitting.value = false
   }
@@ -273,6 +335,7 @@ const sendRating = async (lesson) => {
   try {
     await rateLesson(lesson.id, draft)
     ratingDrafts.value[lesson.id] = { score: 5, review: '', anonymous: false }
+    await load()
   } catch (e) {
     error.value = e.response?.data?.detail || 'Не удалось отправить оценку'
   } finally {
@@ -402,18 +465,28 @@ onMounted(load)
         <section v-if="needsTest" class="rounded-2xl border border-gray-100 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
           <h3 class="font-bold text-gray-900 dark:text-white">Вступительный тест</h3>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            25 вопросов, 3 задания на слух и текст чтения. В прототипе результат считается автоматически.
+            Ответьте на вопросы — система определит ваш уровень (A1–C1).
           </p>
-          <div class="mt-4 grid grid-cols-5 gap-2">
-            <button
-              v-for="i in 25"
-              :key="i"
-              class="rounded-lg border px-2 py-2 text-xs"
-              :class="answerValue(i) ? 'border-red-500 bg-red-50 text-red-600' : 'border-gray-200 text-gray-500 dark:border-neutral-700'"
-              @click="setAnswer(i, answerValue(i) ? '' : 'a')"
-            >
-              {{ i }}
-            </button>
+
+          <div class="mt-4 space-y-4">
+            <div v-for="(q, idx) in examQuestions" :key="idx" v-show="q.type === 'choice'">
+              <p class="text-sm font-medium text-gray-800 dark:text-gray-100">{{ idx + 1 }}. {{ q.text }}</p>
+              <div class="mt-2 flex flex-wrap gap-2">
+                <button
+                  v-for="opt in q.options" :key="opt"
+                  class="rounded-lg border px-3 py-2 text-sm transition"
+                  :class="answerValue(idx) === opt
+                    ? 'border-red-500 bg-red-50 text-red-600'
+                    : 'border-gray-200 text-gray-600 dark:border-neutral-700 dark:text-gray-300'"
+                  @click="setAnswer(idx, opt)"
+                >
+                  {{ opt }}
+                </button>
+              </div>
+            </div>
+            <p v-if="!examQuestions.length" class="text-sm text-gray-400">
+              Вопросы ещё не добавлены администратором.
+            </p>
           </div>
           <div class="mt-4 space-y-2">
             <input v-model="listeningAnswers.l1" placeholder="Ответ на голосовой вопрос 1"
@@ -432,15 +505,106 @@ onMounted(load)
         </section>
 
         <template v-else-if="isStudent">
-          <section v-if="currentGroup" class="rounded-2xl border border-gray-100 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
-            <h3 class="font-bold text-gray-900 dark:text-white">{{ currentGroup.name }}</h3>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {{ currentGroup.level }} · {{ schedules[currentGroup.schedule] }} · {{ currentGroup.members_count }}/5 участников
-            </p>
-            <p class="mt-3 rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-500 dark:bg-neutral-800 dark:text-gray-300">
-              Ссылка для друзей: {{ currentGroup.invite_code }}
-            </p>
-          </section>
+          <template v-if="currentGroup">
+            <!-- шапка группы + покинуть -->
+            <section class="rounded-2xl border border-gray-100 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <h3 class="font-bold text-gray-900 dark:text-white truncate">{{ currentGroup.name }}</h3>
+                  <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                    {{ currentGroup.level }} · {{ schedules[currentGroup.schedule] }} · {{ currentGroup.members_count }}/5
+                  </p>
+                </div>
+                <button
+                  class="shrink-0 rounded-xl bg-gray-100 px-3 py-2 text-xs font-medium text-red-500
+                         hover:bg-red-50 dark:bg-neutral-800 dark:hover:bg-neutral-700 disabled:opacity-50"
+                  :disabled="submitting" @click="leaveCurrentGroup"
+                >
+                  Покинуть
+                </button>
+              </div>
+              <p class="mt-2 rounded-lg bg-gray-50 px-2.5 py-1.5 text-[11px] text-gray-500 dark:bg-neutral-800 dark:text-gray-300">
+                Код для друзей: {{ currentGroup.invite_code }}
+              </p>
+            </section>
+
+            <!-- основные кнопки: Чат / ДЗ / Экзамен -->
+            <div class="grid grid-cols-3 gap-2">
+              <button
+                class="rounded-2xl bg-red-500 hover:bg-red-600 text-white py-4 font-semibold text-xs transition flex flex-col items-center gap-1"
+                @click="goChat">
+                <span class="text-2xl">💬</span>
+                Чат
+              </button>
+              <button
+                class="rounded-2xl bg-blue-600 hover:bg-blue-700 text-white py-4 font-semibold text-xs transition flex flex-col items-center gap-1"
+                @click="goHomework">
+                <span class="text-2xl">📒</span>
+                ДЗ
+              </button>
+              <button
+                class="rounded-2xl bg-gray-900 hover:bg-gray-800 text-white py-4 font-semibold text-xs transition flex flex-col items-center gap-1"
+                @click="goExam">
+                <span class="text-2xl">📝</span>
+                Экзамен
+              </button>
+            </div>
+
+            <!-- уроки (с оценкой) -->
+            <section v-if="overview?.lessons?.length" class="rounded-2xl border border-gray-100 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+              <h3 class="font-bold text-gray-900 dark:text-white">Уроки</h3>
+              <div class="mt-3 space-y-2">
+                <div v-for="lesson in overview.lessons" :key="lesson.id"
+                     class="rounded-xl border p-3"
+                     :class="['open','scheduled'].includes(lesson.status) ? 'border-green-200 bg-green-50 dark:border-green-900/40 dark:bg-green-900/10' : 'border-gray-100 dark:border-neutral-800'">
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-gray-800 dark:text-gray-100">{{ lessonStatus[lesson.status] }}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">{{ lessonTime(lesson) }}</p>
+                      <p v-if="lesson.teacher_name" class="text-xs text-gray-400">Преподаватель: {{ lesson.teacher_name }}</p>
+                    </div>
+                    <button v-if="lesson.meet_link && lesson.status !== 'completed'"
+                      class="shrink-0 rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-xs font-semibold text-white"
+                      @click="joinLesson(lesson)">
+                      Подключиться
+                    </button>
+                  </div>
+                  <!-- оценка завершённого урока -->
+                  <template v-if="lesson.status === 'completed'">
+                    <!-- уже оценил → показываем оценку, кнопки нет -->
+                    <div v-if="lesson.rated" class="mt-3 text-sm text-gray-600 dark:text-gray-300">
+                      ⭐ Ваша оценка: <span class="font-semibold text-gray-900 dark:text-white">{{ lesson.my_score }}/5</span>
+                      <span v-if="lesson.my_review"> — «{{ lesson.my_review }}»</span>
+                    </div>
+                    <!-- ещё не оценил → форма -->
+                    <div v-else class="mt-3 grid gap-2 sm:grid-cols-[80px_1fr_auto]">
+                      <select v-model="ensureRatingDraft(lesson).score"
+                        class="rounded-xl border border-gray-200 bg-white px-2 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-white">
+                        <option v-for="score in [5,4,3,2,1]" :key="score" :value="score">{{ score }}</option>
+                      </select>
+                      <input v-model="ensureRatingDraft(lesson).review" placeholder="Отзыв об уроке"
+                        class="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-white">
+                      <button class="rounded-xl bg-red-500 px-3 py-2 text-sm font-semibold text-white"
+                              @click="sendRating(lesson)">Оценить</button>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </section>
+
+            <!-- карта прогресса -->
+            <section class="rounded-2xl border border-gray-100 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+              <h3 class="font-bold text-gray-900 dark:text-white">Карта прогресса</h3>
+              <div v-if="overview?.progress?.length" class="mt-4 grid grid-cols-3 gap-2">
+                <div v-for="stage in overview.progress" :key="`${stage.section}-${stage.stage}`"
+                     class="rounded-xl border p-3 text-xs"
+                     :class="stage.status === 'done' ? 'border-green-200 bg-green-50 text-green-700' : stage.status === 'current' ? 'border-red-200 bg-red-50 text-red-600' : 'border-gray-200 text-gray-400 dark:border-neutral-700'">
+                  {{ stage.title }}
+                </div>
+              </div>
+              <p v-else class="mt-3 text-sm text-gray-400">План появится после первого урока.</p>
+            </section>
+          </template>
 
           <section v-else class="space-y-3">
             <div class="rounded-2xl border border-gray-100 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
@@ -479,57 +643,54 @@ onMounted(load)
               </div>
             </div>
           </section>
+        </template>
 
-          <section v-if="overview?.progress?.length" class="rounded-2xl border border-gray-100 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
-            <h3 class="font-bold text-gray-900 dark:text-white">Карта прогресса</h3>
-            <div class="mt-4 grid grid-cols-3 gap-2">
-              <div v-for="stage in overview.progress" :key="`${stage.section}-${stage.stage}`"
-                   class="rounded-xl border p-3 text-xs"
-                   :class="stage.status === 'done' ? 'border-green-200 bg-green-50 text-green-700' : stage.status === 'current' ? 'border-red-200 bg-red-50 text-red-600' : 'border-gray-200 text-gray-400 dark:border-neutral-700'">
-                {{ stage.title }}
+        <!-- мои группы (преподаватель) -->
+        <section v-if="isTeacher && overview?.teacher_groups?.length"
+                 class="rounded-2xl border border-gray-100 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-gray-900 dark:text-white">Мои группы</h3>
+            <button class="rounded-xl bg-blue-600 hover:bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white"
+                    @click="goHomework">📒 Проверить ДЗ</button>
+          </div>
+          <div class="mt-3 space-y-2">
+            <div v-for="group in overview.teacher_groups" :key="group.id"
+                 class="rounded-xl border border-gray-100 p-3 dark:border-neutral-800">
+              <div class="flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="font-semibold text-gray-900 dark:text-white truncate">{{ group.name }}</p>
+                  <p class="text-xs text-gray-500">{{ group.level }} · {{ group.members_count }}/5 учеников</p>
+                </div>
+                <div class="flex shrink-0 gap-2">
+                  <button class="rounded-xl bg-red-500 hover:bg-red-600 px-3 py-2 text-xs font-semibold text-white"
+                          @click="goChatFor(group.id)">💬 Чат</button>
+                  <button class="rounded-xl bg-blue-600 hover:bg-blue-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                          :disabled="submitting" @click="startGroupLesson(group)">📹 Урок</button>
+                </div>
               </div>
             </div>
-          </section>
-
-          <section class="rounded-2xl border border-gray-100 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
-            <h3 class="font-bold text-gray-900 dark:text-white">Экзамен на повышение</h3>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              20 вопросов и голосовое чтение. При результате от 70% уровень повышается.
-            </p>
-            <div class="mt-4 grid grid-cols-5 gap-2">
-              <button
-                v-for="i in 20"
-                :key="i"
-                class="rounded-lg border px-2 py-2 text-xs"
-                :class="levelExamAnswers[`q${i}`] ? 'border-red-500 bg-red-50 text-red-600' : 'border-gray-200 text-gray-500 dark:border-neutral-700'"
-                @click="levelExamAnswers[`q${i}`] = levelExamAnswers[`q${i}`] ? '' : 'a'"
-              >
-                {{ i }}
-              </button>
-            </div>
-            <textarea v-model="levelReadingText" rows="2" placeholder="Текст голосового задания"
-              class="mt-3 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-white" />
-            <button class="mt-3 w-full rounded-xl bg-red-500 py-3 text-sm font-semibold text-white"
-                    @click="finishLevelExam">
-              Сдать экзамен
-            </button>
-          </section>
-        </template>
+          </div>
+        </section>
 
         <section v-if="isTeacher" class="rounded-2xl border border-gray-100 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
           <h3 class="font-bold text-gray-900 dark:text-white">Группы без преподавателя</h3>
-          <input v-model="lessonStarts" type="datetime-local"
-            class="mt-3 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-white">
+          <p class="mt-0.5 text-xs text-gray-400">Начните урок сейчас или запланируйте на дату</p>
           <div class="mt-3 space-y-2">
             <div v-for="group in overview?.open_teacher_groups" :key="group.id"
-                 class="rounded-xl border border-gray-100 p-3 dark:border-neutral-800">
+                 class="rounded-xl border border-gray-100 p-3 dark:border-neutral-800 space-y-2">
               <div class="flex items-center justify-between gap-2">
-                <div>
-                  <p class="font-semibold text-gray-900 dark:text-white">{{ group.name }}</p>
+                <div class="min-w-0">
+                  <p class="font-semibold text-gray-900 dark:text-white truncate">{{ group.name }}</p>
                   <p class="text-xs text-gray-500">{{ group.level }} · секция {{ group.current_section }}, этап {{ group.current_stage }} · {{ group.members_count }}/5</p>
                 </div>
-                <button class="rounded-xl bg-red-500 px-3 py-2 text-xs font-semibold text-white"
-                        @click="planLesson(group)">Взять</button>
+                <button class="shrink-0 rounded-xl bg-blue-600 hover:bg-blue-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                        :disabled="submitting" @click="startGroupLesson(group)">📹 Начать сейчас</button>
+              </div>
+              <div class="flex gap-2">
+                <input v-model="planDrafts[group.id]" type="datetime-local"
+                  class="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-white">
+                <button class="shrink-0 rounded-xl bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 dark:bg-neutral-700 dark:text-gray-200 disabled:opacity-50"
+                        :disabled="submitting" @click="planLesson(group)">Запланировать</button>
               </div>
             </div>
             <p v-if="!overview?.open_teacher_groups?.length" class="py-4 text-center text-sm text-gray-400">
@@ -538,55 +699,22 @@ onMounted(load)
           </div>
         </section>
 
-        <section v-if="overview?.lessons?.length" class="rounded-2xl border border-gray-100 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
-          <h3 class="font-bold text-gray-900 dark:text-white">Уроки</h3>
+        <!-- уроки преподавателя (вести/завершать) -->
+        <section v-if="isTeacher && overview?.lessons?.length" class="rounded-2xl border border-gray-100 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+          <h3 class="font-bold text-gray-900 dark:text-white">Мои уроки</h3>
           <div class="mt-3 space-y-3">
             <div v-for="lesson in overview.lessons" :key="lesson.id" class="rounded-xl bg-gray-50 p-3 dark:bg-neutral-800">
-              <p class="font-semibold text-gray-900 dark:text-white">{{ new Date(lesson.starts_at).toLocaleString() }}</p>
+              <p class="font-semibold text-gray-900 dark:text-white">{{ lessonTime(lesson) }}</p>
               <p class="text-xs text-gray-500">{{ lessonStatus[lesson.status] }}</p>
               <a v-if="lesson.meet_link" :href="lesson.meet_link" target="_blank"
                  class="mt-2 inline-flex rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-red-600 dark:bg-neutral-900">
-                Открыть Google Meet
+                Открыть видеозвонок
               </a>
-              <button v-if="isTeacher && lesson.status !== 'completed'"
+              <button v-if="lesson.status !== 'completed'"
                       class="ml-2 rounded-full bg-red-500 px-3 py-1.5 text-xs font-semibold text-white"
                       @click="finishLesson(lesson)">
                 Завершить урок
               </button>
-              <div v-if="isStudent && lesson.status === 'completed'" class="mt-3 grid gap-2 sm:grid-cols-[90px_1fr_auto]">
-                <select v-model="ensureRatingDraft(lesson).score"
-                  class="rounded-xl border border-gray-200 bg-white px-2 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-white">
-                  <option v-for="score in [5,4,3,2,1]" :key="score" :value="score">{{ score }}</option>
-                </select>
-                <input v-model="ensureRatingDraft(lesson).review" placeholder="Отзыв"
-                  class="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-white">
-                <button class="rounded-xl bg-red-500 px-3 py-2 text-sm font-semibold text-white"
-                        @click="sendRating(lesson)">Оценить</button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section v-if="overview?.homeworks?.length" class="rounded-2xl border border-gray-100 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
-          <h3 class="font-bold text-gray-900 dark:text-white">Домашние задания</h3>
-          <div class="mt-3 space-y-3">
-            <div v-for="homework in overview.homeworks" :key="homework.id" class="rounded-xl bg-gray-50 p-3 dark:bg-neutral-800">
-              <p class="text-sm text-gray-800 dark:text-gray-100">{{ homework.task }}</p>
-              <p class="mt-1 text-xs text-gray-500">{{ homeworkStatus[homework.status] }}</p>
-              <div v-if="isStudent && homework.status === 'assigned'" class="mt-3 flex gap-2">
-                <input v-model="homeworkDrafts[homework.id]" placeholder="Ответ на ДЗ"
-                  class="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-white">
-                <button class="rounded-xl bg-red-500 px-3 py-2 text-sm font-semibold text-white"
-                        @click="sendHomework(homework)">Отправить</button>
-              </div>
-              <div v-if="isTeacher && homework.status === 'submitted'" class="mt-3 grid gap-2 sm:grid-cols-[90px_1fr_auto]">
-                <input v-model.number="ensureGradeDraft(homework).grade" type="number" min="1" max="100"
-                  class="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-white">
-                <input v-model="ensureGradeDraft(homework).feedback" placeholder="Комментарий"
-                  class="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-white">
-                <button class="rounded-xl bg-red-500 px-3 py-2 text-sm font-semibold text-white"
-                        @click="sendGrade(homework)">Проверить</button>
-              </div>
             </div>
           </div>
         </section>

@@ -13,6 +13,7 @@ export const createCustomTask = (data) => api.post('/tasks/custom', data)
 export const getTasks = () => api.get('/tasks')
 export const getTask = (id) => api.get(`/tasks/${id}`)
 export const deleteTask = (id) => api.delete(`/tasks/${id}`)
+export const clearCompletedTasks = () => api.post('/tasks/clear-completed')
 
 // --- сессия диалога ---
 export const startTask = (taskId) => api.post(`/tasks/${taskId}/start`)

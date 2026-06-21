@@ -73,6 +73,14 @@ def list_tasks(
     return service.list_tasks(current)
 
 
+@router.post("/tasks/clear-completed")
+def clear_completed(
+    current: User = Depends(get_current_user),
+    service: TutorService = Depends(get_tutor_service),
+) -> dict:
+    return {"deleted": service.delete_completed(current)}
+
+
 @router.get("/tasks/{task_id}", response_model=TaskOut)
 def get_task(
     task_id: int,

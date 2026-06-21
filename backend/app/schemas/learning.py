@@ -20,6 +20,49 @@ class EntranceSubmitIn(BaseModel):
     reading_text: str | None = None
 
 
+class GroupMessageIn(BaseModel):
+    text: str
+
+
+class GroupMessageOut(BaseModel):
+    id: int
+    sender_id: int
+    sender_name: str
+    sender_avatar: str | None = None
+    text: str
+    created_at: datetime
+    is_mine: bool = False
+
+
+class EntranceQuestionOut(BaseModel):
+    """Вопрос вступительного теста для ученика — без правильного ответа."""
+    type: str = "choice"
+    text: str
+    options: list[str] = []
+
+
+class EntranceExamOut(BaseModel):
+    questions: list[EntranceQuestionOut] = []
+    voice_task: str | None = None
+
+
+class LevelExamQuestionOut(BaseModel):
+    """Вопрос экзамена на уровень для ученика (без правильного ответа)."""
+    type: str = "choice"
+    text: str
+    options: list[str] = []
+    audio_url: str | None = None   # для аудирования
+
+
+class LevelExamOut(BaseModel):
+    target_level: LanguageLevel | None = None
+    voice_task: str | None = None
+    questions: list[LevelExamQuestionOut] = []
+    can_take: bool = True           # доступен ли досрочно (лимит раз в 2 недели)
+    next_available_at: datetime | None = None
+    configured: bool = True         # создан ли админом экзамен на этот уровень
+
+
 class ExamResultOut(BaseModel):
     score: int
     level: LanguageLevel
@@ -78,17 +121,26 @@ class LessonOut(BaseModel):
     id: int
     group_id: int
     teacher_id: int
+    teacher_name: str | None = None
     starts_at: datetime
+    ends_at: datetime | None = None   # урок длится 1 час
     meet_link: str | None = None
     status: LessonStatus
+    # оценка текущего ученика (если уже оценил)
+    rated: bool = False
+    my_score: int | None = None
+    my_review: str | None = None
 
 
 class HomeworkOut(BaseModel):
     id: int
     group_id: int
+    group_name: str | None = None
     student_id: int
+    student_name: str | None = None
     task: str
     submission: str | None = None
+    submission_file: str | None = None
     status: HomeworkStatus
     grade: int | None = None
     feedback: str | None = None
@@ -105,3 +157,4 @@ class LearningOverviewOut(BaseModel):
     lessons: list[LessonOut] = []
     homeworks: list[HomeworkOut] = []
     open_teacher_groups: list[GroupOut] = []
+    teacher_groups: list[GroupOut] = []      # группы, которые ведёт преподаватель

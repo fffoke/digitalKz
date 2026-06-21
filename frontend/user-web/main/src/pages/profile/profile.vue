@@ -63,6 +63,15 @@ onMounted(async () => {
         >
           Редактировать профиль
         </button>
+
+        <button
+          v-if="profile.role !== 'teacher'"
+          class="mt-2 w-full bg-red-500 hover:bg-red-600 text-white font-semibold
+                 rounded-xl py-2.5 text-sm transition flex items-center justify-center gap-2"
+          @click="router.push('/profile/certificate')"
+        >
+          🎓 Скачать сертификат
+        </button>
       </div>
 
       <!-- ранг -->

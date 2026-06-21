@@ -4,12 +4,14 @@ import { useRouter } from 'vue-router'
 
 import AppLayout from '@/components/layout/AppLayout.vue'
 import TaskCard from '@/components/tutor/TaskCard.vue'
-import { getInterests, getTasks, generateTasks, createCustomTask, deleteTask } from '@/services/tutor'
+import { getInterests, getTasks, generateTasks, createCustomTask, deleteTask, clearCompletedTasks } from '@/services/tutor'
 
 const router = useRouter()
 const tasks = ref([])
 const loading = ref(true)
 const generating = ref(false)
+const historyOpen = ref(false)
+const clearing = ref(false)
 const customOpen = ref(false)
 const customSaving = ref(false)
 const customError = ref('')
@@ -19,7 +21,9 @@ const customForm = ref({
   difficulty: 'medium',
 })
 
-const done = computed(() => tasks.value.filter((t) => t.status === 'done').length)
+const activeTasks = computed(() => tasks.value.filter((t) => t.status !== 'done'))
+const completedTasks = computed(() => tasks.value.filter((t) => t.status === 'done'))
+const done = computed(() => completedTasks.value.length)
 const customValid = computed(() => customForm.value.description.trim().length >= 10)
 
 const load = async () => {
@@ -102,6 +106,19 @@ const remove = async (task) => {
   }
 }
 
+const clearCompleted = async () => {
+  if (!confirm('Удалить все пройденные задания из истории?')) return
+  clearing.value = true
+  try {
+    await clearCompletedTasks()
+    tasks.value = tasks.value.filter((t) => t.status !== 'done')
+  } catch (e) {
+    console.log(e.response)
+  } finally {
+    clearing.value = false
+  }
+}
+
 const open = (task) => router.push({ name: 'conversation', params: { taskId: task.id } })
 
 onMounted(load)
@@ -150,11 +167,12 @@ onMounted(load)
       <div v-if="loading" class="py-24 text-center text-gray-400">Загрузка…</div>
 
       <template v-else>
-        <div v-if="tasks.length" class="space-y-2.5">
-          <TaskCard v-for="t in tasks" :key="t.id" :task="t" @open="open" @delete="remove" />
+        <!-- активные задания -->
+        <div v-if="activeTasks.length" class="space-y-2.5">
+          <TaskCard v-for="t in activeTasks" :key="t.id" :task="t" @open="open" @delete="remove" />
         </div>
 
-        <div v-else class="py-16 text-center">
+        <div v-else-if="!completedTasks.length" class="py-16 text-center">
           <div class="text-4xl mb-2">🗒️</div>
           <p class="text-gray-500 dark:text-gray-400 text-sm">Пока нет заданий</p>
           <button
@@ -170,6 +188,10 @@ onMounted(load)
           </button>
         </div>
 
+        <div v-else class="py-10 text-center text-gray-400 text-sm">
+          Все задания пройдены 🎉 Сгенерируйте новые ниже.
+        </div>
+
         <button
           class="w-full mt-2 border-2 border-dashed border-gray-200 dark:border-neutral-700
                  text-gray-500 dark:text-gray-400 rounded-2xl py-3 text-sm font-medium
@@ -179,6 +201,31 @@ onMounted(load)
         >
           {{ generating ? 'Генерируем…' : '＋ Сгенерировать ещё задания' }}
         </button>
+
+        <!-- история пройденных (свёрнута, чтобы не мешать) -->
+        <div v-if="completedTasks.length" class="pt-2">
+          <button
+            class="w-full flex items-center justify-between rounded-xl bg-gray-50 dark:bg-neutral-900
+                   border border-gray-100 dark:border-neutral-800 px-4 py-2.5 text-sm font-medium
+                   text-gray-600 dark:text-gray-300"
+            @click="historyOpen = !historyOpen"
+          >
+            <span>🗂 История пройденных ({{ completedTasks.length }})</span>
+            <span class="text-gray-400">{{ historyOpen ? '▲' : '▼' }}</span>
+          </button>
+
+          <div v-if="historyOpen" class="mt-2 space-y-2.5">
+            <TaskCard v-for="t in completedTasks" :key="t.id" :task="t" @open="open" @delete="remove" />
+            <button
+              class="w-full rounded-xl bg-gray-100 dark:bg-neutral-800 text-red-500 text-sm font-medium
+                     py-2.5 hover:bg-red-50 dark:hover:bg-neutral-700 transition disabled:opacity-50"
+              :disabled="clearing"
+              @click="clearCompleted"
+            >
+              {{ clearing ? 'Очищаем…' : 'Удалить все пройденные' }}
+            </button>
+          </div>
+        </div>
       </template>
     </div>
 

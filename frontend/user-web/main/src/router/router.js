@@ -18,9 +18,13 @@ const router = createRouter({
 
         // Обучение (старая идея: роли преподаватель/ученик, группы)
         { path: '/learn', name: 'learn', component: () => import('@/pages/learn/learn.vue'), meta: { authOnly: true } },
+        { path: '/learn/exam', name: 'level-exam', component: () => import('@/pages/learn/exam.vue'), meta: { authOnly: true } },
+        { path: '/learn/homework', name: 'homework', component: () => import('@/pages/learn/homework.vue'), meta: { authOnly: true } },
+        { path: '/learn/group/:groupId/chat', name: 'group-chat', component: () => import('@/pages/learn/group-chat.vue'), meta: { authOnly: true } },
 
         { path: '/profile', name: 'profile', component: () => import('@/pages/profile/profile.vue'), meta: { authOnly: true } },
         { path: '/profile/edit', name: 'profile-edit', component: () => import('@/pages/profile/edit-profile.vue'), meta: { authOnly: true } },
+        { path: '/profile/certificate', name: 'certificate', component: () => import('@/pages/profile/certificate.vue'), meta: { authOnly: true } },
     ]
 });
 
